@@ -26,8 +26,8 @@ auth:
   idleLifetime: 300
     
 clusters:
-  - id: default
-    name: gateway-backing-cluster
+  - id: kafka-backing-cluster
+    name: kafka-backing-cluster
     color: "#0013E7"
     ignoreUntrustedCertificate: false
     bootstrapServers: "kafka1:9092"
@@ -37,7 +37,7 @@ clusters:
       ignoreUntrustedCertificate: false
       properties:
     labels: {}
-  - id: gateway
+  - id: cdk-gateway
     name: cdk-gateway
     color: "#A020F0"
     ignoreUntrustedCertificate: false
