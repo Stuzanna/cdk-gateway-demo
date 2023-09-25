@@ -8,6 +8,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
       GATEWAY_SECURITY_PROTOCOL: SASL_PLAINTEXT
       GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: true
+    ports:
+      - "8888:8888"
     healthcheck:
       test: curl localhost:8888/health
       interval: 5s
@@ -114,24 +116,24 @@ services:
       interval: 5s
       retries: 25
   
-  # schema-registry:
-  #   image: confluentinc/cp-schema-registry:7.4.1
-  #   hostname: schema-registry
-  #   container_name: schema-registry
-  #   depends_on:
-  #     - kafka1
-  #   ports:
-  #     - "8081:8081"
-  #   volumes:
-  #     - type: bind
-  #       source: "./clientConfig"
-  #       target: /clientConfig
-  #       read_only: true
-  #   environment:
-  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
-  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092
-  #     SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
-  #     SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.1
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - kafka1
+    ports:
+      - "8081:8081"
+    volumes:
+      - type: bind
+        source: "./clientConfig"
+        target: /clientConfig
+        read_only: true
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
 
   
 
