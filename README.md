@@ -1,4 +1,6 @@
 # cdk-gateway-demo
+/event-demo
+
 Run the compose. Login to Console is in the yaml config, bob@conduktor.io admin
 
 If need a fresh Console, kill Console, Postgres and delete volume (`event-demo_pg_data`) before restart.
