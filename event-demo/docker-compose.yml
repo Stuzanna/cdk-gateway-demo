@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   conduktor-gateway:
-    image: conduktor/conduktor-gateway:2.1.5
+    image: conduktor/conduktor-gateway:2.1.6
     hostname: conduktor-gateway
     container_name: conduktor-gateway
     environment:
@@ -21,7 +21,7 @@ services:
         condition: service_healthy
 
   conduktor-console:
-      image: conduktor/conduktor-platform:1.18.0
+      image: conduktor/conduktor-platform:1.18.3
       hostname: conduktor-console
       container_name: conduktor-console
       ports:
