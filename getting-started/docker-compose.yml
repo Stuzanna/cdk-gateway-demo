@@ -30,7 +30,7 @@ services:
       timeout: 5s
       retries: 3
     environment:
-      LICENSE_KEY: ${CDK_LICENSE}
+      # LICENSE_KEY: ${CDK_LICENSE}
       CDK_DATABASE_URL: "postgresql://conduktor:change_me@postgresql:5432/conduktor-platform"
       CDK_CLUSTERS_0_ID: "local"
       CDK_CLUSTERS_0_NAME: "local"
