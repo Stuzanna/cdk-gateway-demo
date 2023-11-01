@@ -22,8 +22,8 @@ auth:
       password: guest
       groups:
         - MEMBER  
-  sessionLifetime: 259200
-  idleLifetime: 259199
+  sessionLifetime: 1000
+  idleLifetime: 300
     
 clusters:
   - id: kafka-backing-cluster
@@ -56,5 +56,25 @@ clusters:
       security.protocol=SASL_PLAINTEXT
       sasl.mechanism=PLAIN
       sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="someUsername" password="eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InNvbWVVc2VybmFtZSIsInZjbHVzdGVyIjoic29tZUNsdXN0ZXIiLCJleHAiOjIwMDgyOTgzNzJ9.vgTd0QngJQp51gt73HNbHlwjK0m2dW8wD9zRLSZnZd4";
-    labels: { }
+    labels: {}
+  - id: msk
+    name: msk
+    color: "#0013E7"
+    ignoreUntrustedCertificate: false
+    bootstrapServers: ""
+    properties:
+    schemaRegistry:
+      url: "http://schema-registry:8081"
+      ignoreUntrustedCertificate: false
+      properties:
+        security.protocol=SASL_SSL
+        sasl.mechanism=AWS_MSK_IAM
+        sasl.jaas.config=software.amazon.msk.auth.iam.IAMLoginModule required;
+        sasl.client.callback.handler.class=io.conduktor.aws.IAMClientCallbackHandler
+        aws_access_key_id=<>
+        aws_secret_access_key=<>
+    labels: {}
+
+
+
 
