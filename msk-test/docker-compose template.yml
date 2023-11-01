@@ -1,0 +1,121 @@
+version: '3.7'
+services:
+  conduktor-gateway-msk:
+    image: conduktor/conduktor-gateway:2.2.0
+    hostname: conduktor-gateway-msk
+    container_name: conduktor-gateway-msk
+    environment:
+      
+      KAFKA_BOOTSTRAP_SERVERS: <>
+      KAKFA_SECURITY_PROTOCOL: SASL_SSL
+      KAFKA_SASL_MECHANISM: AWS_MSK_IAM
+      KAFKA_SASL_JAAS_CONFIG: software.amazon.msk.auth.iam.IAMLoginModule required;
+      KAFKA_SASL_CLIENT_CALLBACK_HANDLER_CLASS: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      AWS_ACCESS_KEY_ID: <>
+      AWS_SECRET_ACCESS_KEY: <>
+      GATEWAY_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: true
+    # GATEWAY_BACKEND_KAFKA_SELECTOR: 'file : { path: /msk.properties }' # if using the file, and see volume below to use the file
+
+    # volumes:
+    #   - type: bind
+    #     source: "./msk.properties"
+    #     target: /msk.properties
+    #     read_only: true
+
+    ports:
+      - "8889:8888"
+
+  kafka-client-msk:
+    image: confluentinc/cp-kafka:7.4.1
+    hostname: kafka-client-msk
+    container_name: kafka-client-msk
+    command: sleep infinity
+    volumes:
+      - type: bind
+        source: "./clientConfig"
+        target: /clientConfig
+        read_only: true
+
+  conduktor-console:
+      image: conduktor/conduktor-platform:1.19.0
+      hostname: conduktor-console
+      container_name: conduktor-console
+      ports:
+        - "8080:8080"
+      volumes:
+        - type: bind
+          source: "./platform-config.yaml"
+          target: /opt/conduktor/platform-config.yaml
+          read_only: true
+      environment:
+        CDK_IN_CONF_FILE: /opt/conduktor/platform-config.yaml
+        KAFKA_BOOTSTRAP_SERVER: kafka1:9092
+        LICENSE_KEY: ${CDK_LICENSE}
+        PROXY_TOKEN: eyJhbGciOiJIUzI1NiJ9.eyJvcmdJZCI6MSwiY2x1c3RlcklkIjoxLCJ1c2VybmFtZSI6InRlc3RAY29uZHVrdG9yLmlvIn0.Eb94MxCyesPeVdQmm0EDBGvhwcx8j-ST-mvmdAId_j0
+        CDK_DATABASE_URL: postgresql://conduktor:change_me@postgresql:5432/conduktor-platform
+      healthcheck:
+        test: curl -f http://localhost:8080/platform/api/modules/health/live || exit 1
+        interval: 10s
+        start_period: 10s
+        timeout: 5s
+        retries: 3
+  
+  postgresql:
+      image: postgres:14
+      hostname: postgresql
+      volumes:
+        - pg_data_msk_test:/var/lib/postgresql/data
+      environment:
+        PGDATA: "/var/lib/postgresql/data"
+        POSTGRES_DB: "conduktor-platform"
+        POSTGRES_USER: "conduktor"
+        POSTGRES_PASSWORD: "change_me"
+        POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
+  
+  # schema-registry:
+  #   image: confluentinc/cp-schema-registry:7.4.1
+  #   hostname: schema-registry
+  #   container_name: schema-registry
+  #   depends_on:
+  #     - kafka1
+  #   ports:
+  #     - "8081:8081"
+  #   volumes:
+  #     - type: bind
+  #       source: "./clientConfig"
+  #       target: /clientConfig
+  #       read_only: true
+  #   environment:
+  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
+  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092
+  #     SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
+  #     SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+
+  
+
+  # conduktor-gateway-2:
+  #   image: conduktor/conduktor-gateway:2.1.2
+  #   hostname: conduktor-gateway-2
+  #   container_name: conduktor-gateway-2
+  #   environment:
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
+  #     GATEWAY_SECURITY_PROTOCOL: SASL_PLAINTEXT
+  #     GATEWAY_ADVERTISED_HOST: conduktor-gateway
+  #     GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: false
+  #   healthcheck:
+  #     test: curl localhost:8888/health
+  #     interval: 5s
+  #     retries: 25
+  #   depends_on:
+  #     kafka1:
+  #       condition: service_healthy
+  #     kafka2:
+  #       condition: service_healthy
+
+  
+
+
+volumes:
+  pg_data_msk_test: {}
+#   conduktor_data: {}
