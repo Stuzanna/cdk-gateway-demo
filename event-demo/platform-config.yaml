@@ -22,8 +22,8 @@ auth:
       password: guest
       groups:
         - MEMBER  
-  sessionLifetime: 1000
-  idleLifetime: 300
+  sessionLifetime: 259200
+  idleLifetime: 259199
     
 clusters:
   - id: kafka-backing-cluster
