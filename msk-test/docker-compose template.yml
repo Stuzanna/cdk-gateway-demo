@@ -5,7 +5,6 @@ services:
     hostname: conduktor-gateway-msk
     container_name: conduktor-gateway-msk
     environment:
-      
       KAFKA_BOOTSTRAP_SERVERS: <>
       KAKFA_SECURITY_PROTOCOL: SASL_SSL
       KAFKA_SASL_MECHANISM: AWS_MSK_IAM
