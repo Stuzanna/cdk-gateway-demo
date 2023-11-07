@@ -15,7 +15,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
 
   conduktor-platform:
-    image: conduktor/conduktor-platform:1.18.3
+    image: conduktor/conduktor-platform:1.19.0
     depends_on:
       - postgresql
       - redpanda-0
@@ -49,8 +49,8 @@ services:
       CDK_MONITORING_CALLBACK-URL: http://conduktor-platform:8080/monitoring/api/
       CDK_MONITORING_NOTIFICATIONS-CALLBACK-URL: http://localhost:8080
 
-  conduktor-gateway:
-    image: conduktor/conduktor-gateway:2.1.6
+  conduktor-gateway-1:
+    image: conduktor/conduktor-gateway:2.2.1
     hostname: conduktor-gateway
     container_name: conduktor-gateway
     environment:
@@ -66,7 +66,7 @@ services:
         condition: service_healthy
 
   conduktor-monitoring:
-    image: conduktor/conduktor-platform-cortex:1.18.0
+    image: conduktor/conduktor-platform-cortex:1.19.0
     environment:
       CDK_CONSOLE-URL: "conduktor-platform:8080"
 
@@ -102,6 +102,13 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+  
+  generator:
+    image: "haianh1233/generator:latest"
+    container_name: generator
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "redpanda-0:9092"
+      KAFKA_SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
 
 
 volumes:
