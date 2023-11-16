@@ -15,7 +15,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
 
   conduktor-platform:
-    image: conduktor/conduktor-platform:1.18.3
+    image: conduktor/conduktor-platform:1.19.1
     depends_on:
       - postgresql
       - redpanda-0
@@ -23,12 +23,6 @@ services:
       - "8080:8080"
     volumes:
       - conduktor_data:/var/conduktor
-    healthcheck:
-      test: curl -f http://localhost:8080/platform/api/modules/health/live || exit 1
-      interval: 10s
-      start_period: 10s
-      timeout: 5s
-      retries: 3
     environment:
       CDK_DATABASE_URL: "postgresql://conduktor:change_me@postgresql:5432/conduktor-platform"
       CDK_CLUSTERS_0_ID: "local"
@@ -49,26 +43,10 @@ services:
       CDK_MONITORING_CALLBACK-URL: http://conduktor-platform:8080/monitoring/api/
       CDK_MONITORING_NOTIFICATIONS-CALLBACK-URL: http://localhost:8080
 
-  conduktor-gateway:
-    image: conduktor/conduktor-gateway:2.1.6
-    hostname: conduktor-gateway
-    container_name: conduktor-gateway
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: redpanda-0:9092
-    ports:
-      - "8888:8888"
-    healthcheck:
-      test: curl localhost:8888/health
-      interval: 5s
-      retries: 25
-    depends_on:
-      redpanda-0:
-        condition: service_healthy
-
   conduktor-monitoring:
-    image: conduktor/conduktor-platform-cortex:1.18.0
+    image: conduktor/conduktor-platform-cortex:1.19.1
     environment:
-      CDK_CONSOLE-URL: "conduktor-platform:8080"
+      CDK_CONSOLE-URL: "http://conduktor-platform:8080"
 
   redpanda-0:
     command:
@@ -102,8 +80,37 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+  
+  conduktor-gateway:
+    image: conduktor/conduktor-gateway:2.2.2
+    hostname: conduktor-gateway
+    container_name: conduktor-gateway
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda-0:9092
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: curl localhost:8888/health
+      interval: 5s
+      retries: 25
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
 
-
+  generator:
+    image: "haianh1233/generator:latest"
+    container_name: generator
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "conduktor-gateway:6969"
+      KAFKA_SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
+    restart: on-failure
+    healthcheck:
+      test: curl conduktor-gateway:8888/health
+      interval: 5s
+      retries: 25
+    depends_on:
+      - redpanda-0
+      - conduktor-gateway
 volumes:
   pg_data: {}
   conduktor_data: {}
