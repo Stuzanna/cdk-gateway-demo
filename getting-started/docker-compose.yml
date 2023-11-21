@@ -100,11 +100,6 @@ services:
   generator:
     image: "haianh1233/generator:latest"
     container_name: generator
-    volumes:
-    # - type: bind
-    #     source: ./interceptors.json
-    #     target: /config/interceptors.json
-      - ./interceptors.json:/config/interceptors.json # Remove me for prod
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "conduktor-gateway:6969"
       KAFKA_SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
@@ -116,25 +111,6 @@ services:
     depends_on:
       - redpanda-0
       - conduktor-gateway
-  # generator:
-  #   image: "data-gen-service:0.0"
-  #   container_name: generator
-  #   # volumes:
-  #   # # - type: bind
-  #   # #     source: ./interceptors.json
-  #   # #     target: /config/interceptors.json
-  #   #   - ./interceptors.json:/config/interceptors.json # Remove me for prod
-  #   environment:
-  #     KAFKA_BOOTSTRAP_SERVERS: "conduktor-gateway:6969"
-  #     KAFKA_SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
-  #   restart: on-failure
-  #   healthcheck:
-  #     test: curl conduktor-gateway:8888/health
-  #     interval: 5s
-  #     retries: 25
-  #   depends_on:
-  #     - redpanda-0
-  #     - conduktor-gateway
 volumes:
   pg_data: {}
   conduktor_data: {}
