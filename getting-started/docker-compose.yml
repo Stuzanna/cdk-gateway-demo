@@ -86,7 +86,7 @@ services:
       start_period: 5s
   
   conduktor-gateway:
-    image: conduktor/conduktor-gateway:2.2.2
+    image: conduktor/conduktor-gateway:2.3.0
     hostname: conduktor-gateway
     container_name: conduktor-gateway
     environment:
@@ -101,20 +101,19 @@ services:
       redpanda-0:
         condition: service_healthy
   
-  generator:
-    image: "conduktor/data-gen-service-topics:0.2" # not published yet, use local
-    container_name: generator
+  conduktor-data-generator:
+    image: "conduktor/conduktor-data-generator:0.1"
+    container_name: conduktor-data-generator
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "conduktor-gateway:6969"
       KAFKA_SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
+      GATEWAY_ADMIN_API: "http://conduktor-gateway:8888"
     restart: on-failure
-    healthcheck:
-      test: curl conduktor-gateway:8888/health
-      interval: 5s
-      retries: 25
     depends_on:
-      - redpanda-0
-      - conduktor-gateway
+      redpanda-0:
+        condition: service_healthy
+      conduktor-gateway:
+        condition: service_healthy
 volumes:
   pg_data: {}
   conduktor_data: {}
