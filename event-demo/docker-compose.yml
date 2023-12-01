@@ -7,6 +7,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
       GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: true
+      GATEWAY_FEATURE_FLAGS_ANALYTICS: false
     ports:
       - "8888:8888"
     healthcheck:
@@ -21,6 +22,7 @@ services:
 
   conduktor-console:
       image: conduktor/conduktor-platform:1.19.2
+      # image: ghcr.io/conduktor/conduktor-platform:1.20.0-alpha2
       hostname: conduktor-console
       container_name: conduktor-console
       ports:
@@ -40,7 +42,7 @@ services:
         CDK_DATABASE_URL: postgresql://conduktor:change_me@postgresql:5432/conduktor-platform
         CDK_CLUSTERS_0_ID: "local-kafka"
         CDK_CLUSTERS_0_NAME: "local-kafka"
-        CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:9092"
+        CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:9092"
         CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://schema-registry:18081"
         CDK_CLUSTERS_0_COLOR: "#6A57C8"
         CDK_CLUSTERS_0_ICON: "kafka"
@@ -175,11 +177,11 @@ services:
     container_name: conduktor-data-generator
     environment:
       KAFKA_BOOTSTRAP_SERVERS: conduktor-gateway:6969
-      KAFKA_SCHEMA_REGISTRY_URL: http://redpanda-0:8081
+      KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:18081
       GATEWAY_ADMIN_API: http://conduktor-gateway:8888
     restart: on-failure
     depends_on:
-      redpanda-0:
+      kafka1:
         condition: service_healthy
       conduktor-gateway:
         condition: service_healthy
