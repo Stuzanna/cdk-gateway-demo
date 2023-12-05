@@ -1,51 +1,7 @@
-version: '3.7'
-services:
-  conduktor-gateway:
-    image: conduktor/conduktor-gateway:2.2.2
-    hostname: conduktor-gateway
-    container_name: conduktor-gateway
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
-      GATEWAY_SECURITY_PROTOCOL: SASL_PLAINTEXT
-      GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: true
-    ports:
-      - "8888:8888"
-    healthcheck:
-      test: curl localhost:8888/health
-      interval: 5s
-      retries: 25
-    depends_on:
-      kafka1:
-        condition: service_healthy
-      kafka2:
-        condition: service_healthy
+version: '3.8'
 
-  conduktor-console:
-      image: conduktor/conduktor-platform:1.19.1
-      hostname: conduktor-console
-      container_name: conduktor-console
-      ports:
-        - "8080:8080"
-      volumes:
-        - type: bind
-          source: "./platform-config.yaml"
-          target: /opt/conduktor/platform-config.yaml
-          read_only: true
-      depends_on:
-        - kafka1
-      environment:
-        CDK_IN_CONF_FILE: /opt/conduktor/platform-config.yaml
-        KAFKA_BOOTSTRAP_SERVER: kafka1:9092
-        LICENSE_KEY: ${CDK_LICENSE}
-        PROXY_TOKEN: eyJhbGciOiJIUzI1NiJ9.eyJvcmdJZCI6MSwiY2x1c3RlcklkIjoxLCJ1c2VybmFtZSI6InRlc3RAY29uZHVrdG9yLmlvIn0.Eb94MxCyesPeVdQmm0EDBGvhwcx8j-ST-mvmdAId_j0
-        CDK_DATABASE_URL: postgresql://conduktor:change_me@postgresql:5432/conduktor-platform
-      healthcheck:
-        test: curl -f http://localhost:8080/platform/api/modules/health/live || exit 1
-        interval: 10s
-        start_period: 10s
-        timeout: 5s
-        retries: 3
-  
+services:
+
   postgresql:
       image: postgres:14
       hostname: postgresql
@@ -57,6 +13,76 @@ services:
         POSTGRES_USER: "conduktor"
         POSTGRES_PASSWORD: "change_me"
         POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
+
+  conduktor-platform:
+        image: conduktor/conduktor-platform:1.19.2
+        container_name: conduktor-platform
+        depends_on:
+          - kafka1
+        ports:
+          - "8080:8080"
+        volumes:
+          - type: bind
+            source: "./platform-config.yaml"
+            target: /opt/conduktor/platform-config.yaml
+            read_only: true
+        environment:
+          CDK_IN_CONF_FILE: /opt/conduktor/platform-config.yaml
+          CDK_DATABASE_URL: postgresql://conduktor:change_me@postgresql:5432/conduktor-platform
+          KAFKA_BOOTSTRAP_SERVER: kafka1:9092
+          LICENSE_KEY: ${CDK_LICENSE}
+          PROXY_TOKEN: eyJhbGciOiJIUzI1NiJ9.eyJvcmdJZCI6MSwiY2x1c3RlcklkIjoxLCJ1c2VybmFtZSI6InRlc3RAY29uZHVrdG9yLmlvIn0.Eb94MxCyesPeVdQmm0EDBGvhwcx8j-ST-mvmdAId_j0
+          CDK_CLUSTERS_0_ID: "local-kafka"
+          CDK_CLUSTERS_0_NAME: "local-kafka"
+          CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:9092"
+          CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://schema-registry:18081"
+          CDK_CLUSTERS_0_COLOR: "#6A57C8"
+          CDK_CLUSTERS_0_ICON: "kafka"
+          CDK_CLUSTERS_1_ID: "cdk-gateway"
+          CDK_CLUSTERS_1_NAME: "cdk-gateway"
+          CDK_CLUSTERS_1_BOOTSTRAPSERVERS: "conduktor-gateway:6969"
+          CDK_CLUSTERS_1_SCHEMAREGISTRY_URL: "http://schema-registry:8081"
+          CDK_CLUSTERS_1_KAFKAFLAVOR_URL: "http://conduktor-gateway:8888"
+          CDK_CLUSTERS_1_KAFKAFLAVOR_USER: "admin"
+          CDK_CLUSTERS_1_KAFKAFLAVOR_PASSWORD: "conduktor"
+          CDK_CLUSTERS_1_KAFKAFLAVOR_VIRTUALCLUSTER: "passthrough"
+          CDK_CLUSTERS_1_KAFKAFLAVOR_TYPE: "Gateway"
+          CDK_CLUSTERS_1_COLOR: "#6A57C8"
+          CDK_CLUSTERS_1_ICON: "dog"
+          CDK_MONITORING_CORTEX-URL: http://conduktor-monitoring:9009/
+          CDK_MONITORING_ALERT-MANAGER-URL: http://conduktor-monitoring:9010/
+          CDK_MONITORING_CALLBACK-URL: http://conduktor-platform:8080/monitoring/api/
+          CDK_MONITORING_NOTIFICATIONS-CALLBACK-URL: http://localhost:8080
+        healthcheck:
+          test: curl -f http://localhost:8080/platform/api/modules/health/live || exit 1
+          interval: 10s
+          start_period: 10s
+          timeout: 5s
+          retries: 3
+
+  conduktor-monitoring:
+    image: conduktor/conduktor-platform-cortex:1.19.2
+    environment:
+      CDK_CONSOLE-URL: "http://conduktor-platform:8080"
+
+  conduktor-gateway:
+    image: conduktor/conduktor-gateway:2.3.0
+    hostname: conduktor-gateway
+    container_name: conduktor-gateway
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
+      GATEWAY_FEATURE_FLAGS_ANALYTICS: false
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: curl localhost:8888/health
+      interval: 5s
+      retries: 25
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.1
@@ -128,50 +154,32 @@ services:
       - kafka1
     ports:
       - "8081:8081"
-    volumes:
-      - type: bind
-        source: "./clientConfig"
-        target: /clientConfig
-        read_only: true
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092
       SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
       SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
 
-  
-
-  # conduktor-gateway-2:
-  #   image: conduktor/conduktor-gateway:2.1.2
-  #   hostname: conduktor-gateway-2
-  #   container_name: conduktor-gateway-2
-  #   environment:
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
-  #     GATEWAY_SECURITY_PROTOCOL: SASL_PLAINTEXT
-  #     GATEWAY_ADVERTISED_HOST: conduktor-gateway
-  #     GATEWAY_FEATURE_FLAGS_MULTI_TENANCY: false
-  #   healthcheck:
-  #     test: curl localhost:8888/health
-  #     interval: 5s
-  #     retries: 25
-  #   depends_on:
-  #     kafka1:
-  #       condition: service_healthy
-  #     kafka2:
-  #       condition: service_healthy
-
-  
-
   kafka-client:
     image: confluentinc/cp-kafka:7.4.1
     hostname: kafka-client
     container_name: kafka-client
     command: sleep infinity
-    volumes:
-      - type: bind
-        source: "./clientConfig"
-        target: /clientConfig
-        read_only: true
+  
+  conduktor-data-generator:
+    image: conduktor/conduktor-data-generator:0.1
+    container_name: conduktor-data-generator
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: conduktor-gateway:6969
+      KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      GATEWAY_ADMIN_API: http://conduktor-gateway:8888
+    restart: on-failure
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      conduktor-gateway:
+        condition: service_healthy
 
 volumes:
   pg_data_event_demo: {}
+  conduktor_data_event_demo: {}
