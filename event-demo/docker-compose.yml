@@ -18,7 +18,7 @@ services:
         image: conduktor/conduktor-platform:1.19.2
         container_name: conduktor-platform
         depends_on:
-          - kafka1
+          - redpanda-0
         ports:
           - "8080:8080"
         volumes:
@@ -29,19 +29,19 @@ services:
         environment:
           CDK_IN_CONF_FILE: /opt/conduktor/platform-config.yaml
           CDK_DATABASE_URL: postgresql://conduktor:change_me@postgresql:5432/conduktor-platform
-          KAFKA_BOOTSTRAP_SERVER: kafka1:9092
+          KAFKA_BOOTSTRAP_SERVER: redpanda-0:9092
           LICENSE_KEY: ${CDK_LICENSE}
           PROXY_TOKEN: eyJhbGciOiJIUzI1NiJ9.eyJvcmdJZCI6MSwiY2x1c3RlcklkIjoxLCJ1c2VybmFtZSI6InRlc3RAY29uZHVrdG9yLmlvIn0.Eb94MxCyesPeVdQmm0EDBGvhwcx8j-ST-mvmdAId_j0
           CDK_CLUSTERS_0_ID: "local-kafka"
           CDK_CLUSTERS_0_NAME: "local-kafka"
-          CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:9092"
-          CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://schema-registry:18081"
+          CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "redpanda-0:9092"
+          CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://redpanda-0:18081"
           CDK_CLUSTERS_0_COLOR: "#6A57C8"
           CDK_CLUSTERS_0_ICON: "kafka"
           CDK_CLUSTERS_1_ID: "cdk-gateway"
           CDK_CLUSTERS_1_NAME: "cdk-gateway"
           CDK_CLUSTERS_1_BOOTSTRAPSERVERS: "conduktor-gateway:6969"
-          CDK_CLUSTERS_1_SCHEMAREGISTRY_URL: "http://schema-registry:8081"
+          CDK_CLUSTERS_1_SCHEMAREGISTRY_URL: "http://redpanda-0:18081"
           CDK_CLUSTERS_1_KAFKAFLAVOR_URL: "http://conduktor-gateway:8888"
           CDK_CLUSTERS_1_KAFKAFLAVOR_USER: "admin"
           CDK_CLUSTERS_1_KAFKAFLAVOR_PASSWORD: "conduktor"
@@ -65,12 +65,45 @@ services:
     environment:
       CDK_CONSOLE-URL: "http://conduktor-platform:8080"
 
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with eachother internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      - --smp 1
+      - --memory 1G
+      - --mode dev-container
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v23.1.11
+    container_name: redpanda-0
+    volumes:
+      - redpanda-0_event_demo:/var/lib/redpanda/data
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+  
   conduktor-gateway:
     image: conduktor/conduktor-gateway:2.3.0
     hostname: conduktor-gateway
     container_name: conduktor-gateway
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
+      KAFKA_BOOTSTRAP_SERVERS: redpanda-0:9092
       GATEWAY_FEATURE_FLAGS_ANALYTICS: false
     ports:
       - "8888:8888"
@@ -79,107 +112,23 @@ services:
       interval: 5s
       retries: 25
     depends_on:
-      kafka1:
+      redpanda-0:
         condition: service_healthy
-      kafka2:
-        condition: service_healthy
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.1
-    hostname: zookeeper
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    healthcheck:
-      test: nc -zv zookeeper 2181 || exit 1
-      interval: 5s
-      retries: 25
-
-  kafka1:
-    image: confluentinc/cp-kafka:7.4.1
-    hostname: kafka1
-    container_name: kafka1
-    depends_on:
-      - zookeeper
-    ports:
-        - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
-      KAFKA_REPLICATION_FACTOR: 2
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=INFO"
-      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
-    healthcheck:
-      test: nc -zv kafka1 9092 || exit 1
-      interval: 5s
-      retries: 25
-
-  kafka2:
-    image: confluentinc/cp-kafka:7.4.1
-    hostname: kafka2
-    container_name: kafka2
-    depends_on:
-      - zookeeper
-    ports:
-        - "9093:9093"
-    environment:
-      KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093
-      KAFKA_REPLICATION_FACTOR: 2
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=INFO"
-      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
-    healthcheck:
-      test: nc -zv kafka2 9093 || exit 1
-      interval: 5s
-      retries: 25
-  
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.4.1
-    hostname: schema-registry
-    container_name: schema-registry
-    depends_on:
-      - kafka1
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092
-      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
-      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
-
-  kafka-client:
-    image: confluentinc/cp-kafka:7.4.1
-    hostname: kafka-client
-    container_name: kafka-client
-    command: sleep infinity
-  
   conduktor-data-generator:
     image: conduktor/conduktor-data-generator:0.1
     container_name: conduktor-data-generator
     environment:
       KAFKA_BOOTSTRAP_SERVERS: conduktor-gateway:6969
-      KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KAFKA_SCHEMA_REGISTRY_URL: http://redpanda-0:8081
       GATEWAY_ADMIN_API: http://conduktor-gateway:8888
     restart: on-failure
     depends_on:
-      kafka1:
+      redpanda-0:
         condition: service_healthy
       conduktor-gateway:
         condition: service_healthy
 
 volumes:
   pg_data_event_demo: {}
+  redpanda-0_event_demo: {}
   conduktor_data_event_demo: {}
